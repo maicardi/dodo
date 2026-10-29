@@ -7,11 +7,30 @@
   var root = document.documentElement;
 
   // ---- theme ----------------------------------------------------------
+  // Matches the topbar background (--bg-elev) so the installed app's status
+  // bar blends in; the dark manifest gives a dark splash screen.
+  var THEME_COLORS = { light: "#ffffff", dark: "#16191d" };
+
+  function applyAppColors(theme) {
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+      var scheme = (m.getAttribute("media") || "").indexOf("dark") >= 0 ? "dark" : "light";
+      m.setAttribute("content", THEME_COLORS[theme] || THEME_COLORS[scheme]);
+    });
+    var manifest = document.querySelector('link[rel="manifest"]');
+    if (manifest) {
+      var dark =
+        theme === "dark" ||
+        (theme !== "light" && !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      manifest.setAttribute("href", "/manifest.webmanifest" + (dark ? "?theme=dark" : ""));
+    }
+  }
+
   function applyTheme(theme) {
     root.classList.remove("dark", "light");
     if (theme === "dark") root.classList.add("dark");
     else if (theme === "light") root.classList.add("light");
     // "system" => no class; CSS prefers-color-scheme decides.
+    applyAppColors(theme);
   }
 
   function storedTheme() {
@@ -54,9 +73,17 @@
 
   var pref = storedTheme();
   if (pref) applyTheme(pref);
+  applyAppColors(currentTheme());
   markActiveTheme(currentTheme());
 
   window.dodoSetTheme = setTheme;
+
+  // ---- service worker -------------------------------------------------
+  // Only once signed in: the login page always renders in English and would
+  // re-register the worker with the wrong locale on every logout.
+  if ("serviceWorker" in navigator && document.querySelector(".usermenu")) {
+    navigator.serviceWorker.register("/sw.js?lang=" + encodeURIComponent(root.lang || "en")).catch(function () {});
+  }
 
   document.addEventListener("click", function (e) {
     var el = e.target.closest ? e.target.closest("[data-set-theme]") : null;
