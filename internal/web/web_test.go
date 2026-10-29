@@ -189,6 +189,10 @@ func TestCalendarRenders(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "cal-grid") {
 		t.Fatalf("calendar grid missing")
 	}
+	// app.js refreshes the calendar by this id.
+	if !strings.Contains(rec.Body.String(), `id="calendar"`) {
+		t.Fatalf("calendar container id missing")
+	}
 }
 
 func TestCalendarShowsCompletedOccurrenceOnDueMonth(t *testing.T) {
@@ -504,5 +508,40 @@ func TestAccountSavesCustomDateFormat(t *testing.T) {
 	}
 	if !strings.Contains(body, `value="DD.MM.YYYY"`) {
 		t.Fatalf("account page should seed the custom box: %s", body)
+	}
+}
+
+func TestHomeRowsKeepsLoadedPages(t *testing.T) {
+	mux, st, u, session := newWebEnv(t)
+	base := time.Now().UTC().Add(time.Hour)
+	for i := range 30 {
+		task := &models.Task{UserID: u.ID, Title: "t", Priority: models.PriorityNormal, DueAt: base.Add(time.Duration(i) * time.Minute)}
+		if err := st.Tasks.Create(context.Background(), task); err != nil {
+			t.Fatalf("create task: %v", err)
+		}
+	}
+	cases := []struct {
+		query    string
+		rows     int
+		loadMore bool
+	}{
+		{"/", pageSize, true},
+		{"/?rows=abc", pageSize, true},
+		{"/?rows=10", pageSize, true},
+		{"/?rows=30", 30, false},
+		{"/?rows=100000", 30, false},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodGet, tc.query, nil)
+		withSession(req, session)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		body := rec.Body.String()
+		if got := strings.Count(body, `class="task-row`); got != tc.rows {
+			t.Errorf("%s: %d rows, want %d", tc.query, got, tc.rows)
+		}
+		if got := strings.Contains(body, "load-more"); got != tc.loadMore {
+			t.Errorf("%s: load-more shown = %v, want %v", tc.query, got, tc.loadMore)
+		}
 	}
 }
