@@ -66,3 +66,22 @@ due offset, priority, recurrence, and recurrence interval (1–365). New-task
 defaults are fetched when the editor is opened, using the profile timezone.
 
 All new labels are translated in English, Italian and Greek.
+
+## Daily Telegram summary
+
+Every account has an optional daily summary under **Settings**. The checkbox is
+off by default and the initial delivery time is 08:00. Times use the IANA
+timezone configured in the account profile, including daylight-saving changes.
+
+For a summary to be delivered, Telegram must be configured and linked for that
+user. Once per local calendar date, when the scheduler reaches or passes the
+chosen time, the service sends one plain-text Telegram message listing pending
+tasks whose due date falls on that day. Recurrences are expanded for the local
+day. If no task is due that day, no message is sent. A successful send is
+persisted so a restart does not resend the same day's summary. On transmission
+failure, the scheduler retries at its next tick.
+
+Settings are stored in SQLite migration `0005_daily_digest.sql`. The
+application remains compatible with existing users; daily summaries are off
+until enabled individually. The site footer and Settings navigation point to
+this personal fork.
