@@ -74,3 +74,23 @@ func TestDailyDigestOncePerLocalDay(t *testing.T) {
     later,err:=st.Users.GetByID(ctx,u.ID)
     if err!=nil || later.DailyDigestLastSentDate!="2026-11-05" {t.Fatalf("last sent not persisted: %v",err)}
 }
+
+func TestDailyDigestSkippedWhenNoTasksDueToday(t *testing.T) {
+    d,err:=db.Open(":memory:")
+    if err!=nil {t.Fatal(err)}
+    defer d.Close()
+    st:=store.New(d)
+    ctx:=context.Background()
+    u:=&models.User{Email:"no-tasks@example.org",PasswordHash:"hash",Timezone:"Europe/Rome",Locale:models.LocaleIt}
+    if err:=st.Users.Create(ctx,u);err!=nil {t.Fatal(err)}
+    now:=time.Date(2026,time.November,5,10,0,0,0,time.FixedZone("CET",3600))
+    future:=&models.Task{UserID:u.ID,Title:"Domani",Priority:models.PriorityNormal,DueAt:now.AddDate(0,0,1)}
+    if err:=st.Tasks.Create(ctx,future);err!=nil {t.Fatal(err)}
+    if err:=st.Users.SetDailyDigest(ctx,u.ID,true,"09:00");err!=nil {t.Fatal(err)}
+    if err:=st.Users.SetTelegramChatID(ctx,u.ID,"123","123");err!=nil {t.Fatal(err)}
+    if err:=st.Users.SetTelegramConfig(ctx,u.ID,"token","123");err!=nil {t.Fatal(err)}
+    sender:=&digestTelegramStub{}
+    sc:=newScheduler(time.Minute,st,ws.NewHub(slog.Default()),sender,slog.Default())
+    sc.tickDailyDigest(ctx,now)
+    if len(sender.sent)!=0 {t.Fatalf("should not send without due tasks: %#v",sender.sent)}
+}
