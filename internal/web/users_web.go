@@ -59,7 +59,7 @@ func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
  raw:=make([]byte,32)
  if _,err=rand.Read(raw);err!=nil { http.Error(w,"Service error",http.StatusInternalServerError);return }
  token:=base64.RawURLEncoding.EncodeToString(raw)
- u:=&models.User{Email:email,PasswordHash:hash,DisplayName:strings.TrimSpace(r.FormValue("display_name"))}
+ u:=&models.User{Email:email,PasswordHash:hash,DisplayName:strings.TrimSpace(r.FormValue("display_name")),Locale:models.Locale(publicLanguage(r))}
  err=h.deps.Store.Users.CreatePending(r.Context(),u,auth.HashToken(token))
  if err==nil {
     if err=h.deps.Mail.SendVerification(r.Context(),email,token,publicLanguage(r));err!=nil {
