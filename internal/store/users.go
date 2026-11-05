@@ -86,12 +86,16 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		u.ID, u.Email, u.PasswordHash, u.DisplayName, u.Timezone, u.Locale, u.Theme, u.DateFormat,
 		botToken, allowed, chatID, chatUserID, configuredAt, formatTime(u.CreatedAt), formatTime(u.UpdatedAt), deletedAt)
 	if err != nil {
-		if isUniqueViolation(err) {
-			return fmt.Errorf("%w: email %s already exists", models.ErrConflict, u.Email)
-		}
-		return err
-	}
-	return nil
+        if isUniqueViolation(err) {
+            return fmt.Errorf("%w: email already exists", models.ErrConflict)
+        }
+        return err
+    }
+    _, err = s.db.ExecContext(ctx, `UPDATE users SET email_verified_at = created_at WHERE id=?`, u.ID)
+    if err != nil { return err }
+    _, err = s.db.ExecContext(ctx, `UPDATE users SET role='admin' WHERE id=?
+       AND NOT EXISTS (SELECT 1 FROM users WHERE role='admin' AND deleted_at IS NULL AND disabled_at IS NULL)`, u.ID)
+    return err
 }
 
 func (s *Users) GetByID(ctx context.Context, id string) (*models.User, error) {
@@ -119,7 +123,7 @@ func (s *Users) GetByTelegramWebhookSecret(_ context.Context, _ string) (*models
 }
 
 func (s *Users) List(ctx context.Context) ([]*models.User, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT "+userColumns()+" FROM users WHERE deleted_at IS NULL ORDER BY created_at")
+	rows, err := s.db.QueryContext(ctx, "SELECT "+userColumns()+" FROM users WHERE deleted_at IS NULL ORDER BY created_at, id")
 	if err != nil {
 		return nil, err
 	}
