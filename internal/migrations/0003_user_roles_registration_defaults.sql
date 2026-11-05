@@ -2,7 +2,7 @@ ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('
 ALTER TABLE users ADD COLUMN disabled_at TEXT;
 ALTER TABLE users ADD COLUMN email_verified_at TEXT;
 ALTER TABLE users ADD COLUMN default_due TEXT NOT NULL DEFAULT '24h' CHECK (default_due IN ('now', '24h', 'week', 'month'));
-ALTER TABLE users ADD COLUMN default_priority TEXT NOT NULL DEFAULT 'normal' CHECK (default_priority IN ('low', 'normal', 'high', 'urgent'));
+ALTER TABLE users ADD COLUMN default_priority TEXT NOT NULL DEFAULT 'normal' CHECK (default_priority IN ('low', 'normal', 'high'));
 ALTER TABLE users ADD COLUMN default_recurrence TEXT NOT NULL DEFAULT 'once' CHECK (default_recurrence IN ('once', 'daily', 'weekly', 'monthly', 'yearly'));
 ALTER TABLE users ADD COLUMN default_recurrence_interval INTEGER NOT NULL DEFAULT 1 CHECK (default_recurrence_interval BETWEEN 1 AND 365);
 
