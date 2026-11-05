@@ -30,13 +30,26 @@ func (m MailSettings) Ready() bool {
  return err == nil && from.Address == m.From && m.Host != "" && m.Port != ""
 }
 
-func (m MailSettings) SendVerification(ctx context.Context, recipient, token string) error {
+func (m MailSettings) SendVerification(ctx context.Context, recipient, token, lang string) error {
  if !m.Ready() { return fmt.Errorf("smtp registration is not configured") }
  to, err := mail.ParseAddress(recipient)
  if err != nil || to.Address != recipient || strings.ContainsAny(recipient,"\r\n") { return fmt.Errorf("invalid recipient") }
  rawPort, err := strconv.Atoi(m.Port)
  if err != nil || rawPort < 1 || rawPort > 65535 { return fmt.Errorf("invalid smtp port") }
  link := strings.TrimRight(m.PublicURL,"/")+"/verify?token="+url.QueryEscape(token)
+ subject := "Verify your Dodo email"
+ instruction := "Open this link to verify your email address and activate your Dodo account:"
+ expiration := "This link expires in 24 hours."
+ switch lang {
+ case "it":
+   subject="Verifica il tuo indirizzo email per Dodo"
+   instruction="Apri questo collegamento per verificare l'indirizzo email e attivare il tuo account Dodo:"
+   expiration="Questo collegamento scade dopo 24 ore."
+ case "el":
+   subject="Επιβεβαίωση email για το Dodo"
+   instruction="Ανοίξτε τον σύνδεσμο για να επιβεβαιώσετε το email και να ενεργοποιήσετε τον λογαριασμό σας:"
+   expiration="Ο σύνδεσμος λήγει σε 24 ώρες."
+ }
  body := "From: "+m.From+"\r\nTo: "+recipient+"\r\nSubject: Verify your Dodo email\r\n"+
   "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"+
   "Open this link to verify your email address and activate your Dodo account:\r\n"+link+
@@ -49,7 +62,7 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token str
  tlsCfg := &tls.Config{ServerName:m.Host,MinVersion:tls.VersionTLS12}
  var client *smtp.Client
  if m.Mode == "tls" {
-   secure,err := tls.Client(conn,tlsCfg),error(nil)
+   secure := tls.Client(conn,tlsCfg)
    if err != nil { return err }
    if err = secure.HandshakeContext(ctx); err != nil { return err }
    client,err = smtp.NewClient(secure,m.Host)
