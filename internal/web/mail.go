@@ -37,7 +37,7 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token, la
  if err != nil || to.Address != recipient || strings.ContainsAny(recipient,"\r\n") { return fmt.Errorf("invalid recipient") }
  rawPort, err := strconv.Atoi(m.Port)
  if err != nil || rawPort < 1 || rawPort > 65535 { return fmt.Errorf("invalid smtp port") }
- link := strings.TrimRight(m.PublicURL,"/")+"/verify?token="+url.QueryEscape(token)
+ link := strings.TrimRight(m.PublicURL,"/")+"/verify?token="+url.QueryEscape(token)+"&lang="+url.QueryEscape(lang)
  subject := "Verify your Dodo email"
  instruction := "Open this link to verify your email address and activate your Dodo account:"
  expiration := "This link expires in 24 hours."
