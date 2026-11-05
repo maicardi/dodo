@@ -56,11 +56,11 @@ func (s *Users) MarkDailyDigestSent(ctx context.Context, userID, localDate strin
     return nil
 }
 
-func (s *Tasks) ListCandidatesForDigest(ctx context.Context, userID string, dayEnd time.Time) ([]*models.Task,error) {
+func (s *Tasks) ListCandidatesForDigest(ctx context.Context, userID string, dayStart, dayEnd time.Time) ([]*models.Task,error) {
     rows,err:=s.db.QueryContext(ctx,`SELECT `+taskColumns()+`
         FROM tasks WHERE user_id=? AND completed_at IS NULL
         AND due_at < ? AND (recurrence_end_at IS NULL OR recurrence_end_at >= ?)
-        ORDER BY due_at,id`,userID,formatTime(dayEnd),formatTime(dayEnd.AddDate(0,0,-1)))
+        ORDER BY due_at,id`,userID,formatTime(dayEnd),formatTime(dayStart))
     if err!=nil{return nil,err}
     defer rows.Close()
     var tasks []*models.Task
