@@ -3,7 +3,7 @@
   "app.tagline": "your todos, simplified",
   "nav.tasks": "Tasks",
   "nav.tokens": "API tokens",
-  "nav.account": "Account",
+  "nav.account": "Settings",
   "nav.logout": "Log out",
   "action.complete": "Complete",
   "action.snooze": "Snooze",
@@ -153,5 +153,15 @@
   "register.invalid": "Enter a valid email address and a password of at least 8 characters.",
   "register.email_failed": "Unable to send verification email. Please try again later.",
   "register.verify_invalid": "Verification link is invalid or expired.",
-  "register.too_many": "Too many registration attempts. Please try again later."
+  "register.too_many": "Too many registration attempts. Please try again later.",
+  "digest.title": "Daily Telegram summary",
+  "digest.help": "Receive once per day a list of unfinished tasks due today. No message is sent when there are no tasks.",
+  "digest.enabled": "Enable daily summary",
+  "digest.time": "Delivery time",
+  "digest.timezone": "Time zone",
+  "digest.telegram_required": "Link a Telegram chat to your account to receive the summary.",
+  "digest.saved": "Summary settings saved",
+  "digest.invalid": "Invalid time: use HH:MM",
+  "digest.message_title": "Tasks due today ({0})",
+  "digest.more": "… additional tasks omitted"
 }
