@@ -81,7 +81,7 @@ func (m *Middleware) resolveBearer(ctx context.Context, token string) *models.Us
 		return nil
 	}
 	user, err := m.Store.Users.GetByID(ctx, t.UserID)
-	if err != nil || user.Deleted() {
+	if err != nil || !user.Active() {
 		_ = invalidateToken(ctx, m.Store, t.ID)
 		return nil
 	}
