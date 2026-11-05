@@ -11,6 +11,9 @@ type User struct {
 	DefaultPriority      Priority
 	DefaultRecurrence    string
 	DefaultRecurrenceInterval int
+	DailyDigestEnabled bool
+	DailyDigestTime string
+	DailyDigestLastSentDate string
 	Email                string
 	PasswordHash         string
 	DisplayName          string
