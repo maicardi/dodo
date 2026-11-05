@@ -28,7 +28,7 @@ type User struct {
 	DeletedAt            *time.Time
 }
 
-func (u *User) IsAdmin() bool { return u != nil && u.Role == "admin" && u.DisabledAt == nil && !u.Deleted() }
+func (u *User) IsAdmin() bool { return u.Active() && u.Role == "admin" }
 func (u *User) Active() bool { return u != nil && u.DisabledAt == nil && u.EmailVerifiedAt != nil && !u.Deleted() }
 
 func (u *User) TelegramEnabled() bool {
