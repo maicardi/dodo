@@ -15,6 +15,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=web /src/internal/web/dist ./internal/web/dist
+RUN go vet ./... && go test ./...
 ARG VERSION=dev
 ARG COMMIT=none
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" -o /out/dodo ./cmd/dodo
