@@ -141,7 +141,7 @@ func (s *Users) List(ctx context.Context) ([]*models.User, error) {
 
 func (s *Users) ListTelegramEnabled(ctx context.Context) ([]*models.User, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT "+userColumns()+" FROM users WHERE deleted_at IS NULL AND telegram_bot_token IS NOT NULL AND telegram_bot_token != ''")
+		"SELECT "+userColumns()+" FROM users WHERE deleted_at IS NULL AND disabled_at IS NULL AND email_verified_at IS NOT NULL AND telegram_bot_token IS NOT NULL AND telegram_bot_token != ''")
 	if err != nil {
 		return nil, err
 	}
