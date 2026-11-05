@@ -19,7 +19,8 @@ func userColumns() string {
 	return `id, email, password_hash, display_name, timezone, locale, theme, date_format,
         telegram_bot_token, telegram_allowed_user_ids, telegram_chat_id, telegram_chat_user_id,
         telegram_configured_at, created_at, updated_at, deleted_at,
-        role, disabled_at, email_verified_at, default_due, default_priority, default_recurrence, default_recurrence_interval`
+        role, disabled_at, email_verified_at, default_due, default_priority, default_recurrence, default_recurrence_interval,
+        daily_digest_enabled, daily_digest_time, daily_digest_last_sent_date`
 }
 
 func scanUser(row interface {
@@ -36,12 +37,15 @@ func scanUser(row interface {
 		updatedAt    sql.NullString
 		disabledAt sql.NullString
 		verifiedAt sql.NullString
+		digestEnabled int
+		digestLast sql.NullString
 	)
 	err := row.Scan(
 		&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.Timezone, &u.Locale, &u.Theme, &u.DateFormat,
 		&botToken, &allowed, &chatID, &chatUserID, &configuredAt,
 		&createdAt, &updatedAt, &deletedAt,
 		&u.Role, &disabledAt, &verifiedAt, &u.DefaultDue, &u.DefaultPriority, &u.DefaultRecurrence, &u.DefaultRecurrenceInterval,
+		&digestEnabled, &u.DailyDigestTime, &digestLast,
 	)
 	if err != nil {
 		return err
@@ -56,6 +60,8 @@ func scanUser(row interface {
 	u.DeletedAt = parseNullableTime(deletedAt)
 	u.DisabledAt = parseNullableTime(disabledAt)
 	u.EmailVerifiedAt = parseNullableTime(verifiedAt)
+	u.DailyDigestEnabled = digestEnabled == 1
+	u.DailyDigestLastSentDate = digestLast.String
 	u.CreatedAt = parseTime(createdAt)
 	u.UpdatedAt = parseTime(updatedAt)
 	return nil
