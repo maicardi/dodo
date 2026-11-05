@@ -1,0 +1,13 @@
+{{define "content"}}
+<section class="card panel" style="max-width:24rem;margin:8vh auto">
+  <h1>{{t .Lang "register.title"}}</h1>
+  <form method="POST" action="/register">
+    <input type="hidden" name="_csrf" value="{{.CSRF}}">
+    <label class="field"><span>{{t .Lang "field.email"}}</span><input name="email" type="email" required autocomplete="email" maxlength="254"></label>
+    <label class="field"><span>{{t .Lang "field.display_name"}}</span><input name="display_name" autocomplete="name"></label>
+    <label class="field"><span>{{t .Lang "field.password"}}</span><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn btn-primary" type="submit">{{t .Lang "register.submit"}}</button>
+  </form>
+  <a href="/login">{{t .Lang "login.submit"}}</a>
+</section>
+{{end}}
