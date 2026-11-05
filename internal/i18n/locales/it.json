@@ -149,5 +149,9 @@
   "defaults.24h": "Dopo 24 ore",
   "defaults.week": "Dopo una settimana",
   "defaults.month": "Dopo un mese",
-  "defaults.saved": "Impostazioni predefinite salvate"
+  "defaults.saved": "Impostazioni predefinite salvate",
+  "register.invalid": "Inserisci un indirizzo email valido e una password di almeno 8 caratteri.",
+  "register.email_failed": "Impossibile inviare l'email di verifica. Riprova più tardi.",
+  "register.verify_invalid": "Il collegamento di verifica non è valido oppure è scaduto.",
+  "register.too_many": "Troppi tentativi di registrazione. Riprova più tardi."
 }
