@@ -149,5 +149,9 @@
   "defaults.24h": "After 24 hours",
   "defaults.week": "After one week",
   "defaults.month": "After one month",
-  "defaults.saved": "Defaults updated"
+  "defaults.saved": "Defaults updated",
+  "register.invalid": "Enter a valid email address and a password of at least 8 characters.",
+  "register.email_failed": "Unable to send verification email. Please try again later.",
+  "register.verify_invalid": "Verification link is invalid or expired.",
+  "register.too_many": "Too many registration attempts. Please try again later."
 }
