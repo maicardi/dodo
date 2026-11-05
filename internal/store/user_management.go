@@ -53,11 +53,13 @@ func (s *Users) VerifyEmail(ctx context.Context, tokenHash string) error {
     if err != nil { return err }
     count,err := res.RowsAffected()
     if err != nil || count != 1 { return models.ErrConflict }
-    _,err = tx.ExecContext(ctx,`UPDATE users SET email_verified_at=?,updated_at=?
+    verifiedRes,err := tx.ExecContext(ctx,`UPDATE users SET email_verified_at=?,updated_at=?
         WHERE id=? AND deleted_at IS NULL AND disabled_at IS NULL`,now,now,id)
     if err != nil { return err }
+    verifiedCount,err := verifiedRes.RowsAffected()
+    if err != nil || verifiedCount != 1 { return models.ErrNotFound }
     _,err = tx.ExecContext(ctx,`UPDATE users SET role='admin' WHERE id=?
-        AND NOT EXISTS (SELECT 1 FROM users WHERE role='admin'
+        AND disabled_at IS NULL AND deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM users WHERE role='admin'
         AND deleted_at IS NULL AND disabled_at IS NULL AND email_verified_at IS NOT NULL)`,id)
     if err != nil { return err }
     return tx.Commit()
