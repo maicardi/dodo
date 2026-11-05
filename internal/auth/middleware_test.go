@@ -182,7 +182,10 @@ func TestAuthSoftDeletedUserInvalidatesSession(t *testing.T) {
 	if _, err := s.Sessions.Create(ctx, u.ID, gen.Hash, "ua", 24*time.Hour); err != nil {
 		t.Fatalf("create session: %v", err)
 	}
-	_ = s.Users.SoftDelete(ctx, u.ID)
+    replacement:=&models.User{Email:"replacement-admin@example.com",PasswordHash:"x"}
+    if err:=s.Users.Create(ctx,replacement);err!=nil { t.Fatal(err) }
+    if err:=s.Users.SetRole(ctx,replacement.ID,"admin");err!=nil { t.Fatal(err) }
+    if err:=s.Users.SoftDelete(ctx,u.ID);err!=nil { t.Fatal(err) }
 
 	mw := &auth.Middleware{Store: s}
 	called := false
