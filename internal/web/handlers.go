@@ -232,6 +232,7 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.Handle("GET /{$}", sess(h.handleHome))
 	mux.Handle("GET /account", sess(h.handleAccount))
 	mux.Handle("POST /account/defaults", post(h.handleDefaults))
+	mux.Handle("POST /account/daily-digest", post(h.handleDailyDigestSettings))
 	mux.Handle("GET /admin", sess(h.handleAdmin))
 	mux.Handle("POST /admin/users", post(h.handleAdminCreate))
 	mux.Handle("POST /admin/users/{id}/role", post(h.handleAdminRole))
