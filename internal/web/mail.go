@@ -51,10 +51,9 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token, la
    instruction="Ανοίξτε τον σύνδεσμο για να επιβεβαιώσετε το email και να ενεργοποιήσετε τον λογαριασμό σας:"
    expiration="Ο σύνδεσμος λήγει σε 24 ώρες."
  }
- body := "From: "+m.From+"\r\nTo: "+recipient+"\r\nSubject: Verify your Dodo email\r\n"+
+ body := "From: "+m.From+"\r\nTo: "+recipient+"\r\nSubject: "+mime.QEncoding.Encode("utf-8",subject)+"\r\n"+
   "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"+
-  "Open this link to verify your email address and activate your Dodo account:\r\n"+link+
-  "\r\n\r\nThis link expires in 24 hours.\r\n"
+  instruction+"\r\n"+link+"\r\n\r\n"+expiration+"\r\n"
  addr := net.JoinHostPort(m.Host,m.Port)
  dialer := &net.Dialer{Timeout:10*time.Second}
  conn,err := dialer.DialContext(ctx,"tcp",addr)
@@ -64,7 +63,6 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token, la
  var client *smtp.Client
  if m.Mode == "tls" {
    secure := tls.Client(conn,tlsCfg)
-   if err != nil { return err }
    if err = secure.HandshakeContext(ctx); err != nil { return err }
    client,err = smtp.NewClient(secure,m.Host)
    if err != nil { return err }
