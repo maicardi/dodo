@@ -59,6 +59,7 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token, la
  conn,err := dialer.DialContext(ctx,"tcp",addr)
  if err != nil { return err }
  defer func(){ _ = conn.Close() }()
+ _ = conn.SetDeadline(time.Now().Add(30*time.Second))
  tlsCfg := &tls.Config{ServerName:m.Host,MinVersion:tls.VersionTLS12}
  var client *smtp.Client
  if m.Mode == "tls" {
@@ -84,5 +85,6 @@ func (m MailSettings) SendVerification(ctx context.Context, recipient, token, la
  if err != nil { return err }
  if _,err = w.Write([]byte(body)); err != nil { _ = w.Close();return err }
  if err = w.Close(); err != nil { return err }
- return client.Quit()
+ _ = client.Quit()
+ return nil
 }
