@@ -9,5 +9,7 @@
       <input name="password" type="password" required autocomplete="current-password"></label>
     <div class="form-actions"><button class="btn btn-primary" type="submit" style="width:100%">{{t .Lang "login.submit"}}</button></div>
   </form>
+  {{if .RegistrationEnabled}}<p><a href="/register">{{t .Lang "register.link"}}</a></p>{{end}}
+  {{if .Flash}}<p>{{.Flash}}</p>{{end}}
 </section>
 {{end}}
