@@ -295,7 +295,7 @@ func (h *Handler) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := h.deps.Store.Users.GetByEmail(r.Context(), email)
-	if err != nil || !auth.VerifyPassword(password, safeHash(user)) {
+	if err != nil || !user.Active() || !auth.VerifyPassword(password, safeHash(user)) {
 		if h.deps.LoginRL != nil {
 			h.deps.LoginRL.RecordFailure(r, email)
 		}
