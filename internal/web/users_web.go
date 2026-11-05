@@ -4,6 +4,7 @@ import (
  "crypto/rand"
  "encoding/base64"
  "net/http"
+ "crypto/subtle"
  "net/mail"
  "net/url"
  "strings"
@@ -13,14 +14,36 @@ import (
  "github.com/mtzanidakis/dodo/internal/models"
 )
 
+func publicLanguage(r *http.Request) string {
+ lang:=r.FormValue("lang")
+ if lang=="" {
+    lang=strings.ToLower(r.Header.Get("Accept-Language"))
+    if len(lang)>=2 { lang=lang[:2] }
+ }
+ if lang=="it" || lang=="el" { return lang }
+ return "en"
+}
+
+func registrationFlash(r *http.Request) string {
+ switch r.URL.Query().Get("registration") {
+ case "sent": return i18n.T("register.sent",publicLanguage(r))
+ case "verified": return i18n.T("register.verified",publicLanguage(r))
+ }
+ return ""
+}
+
 func (h *Handler) handleRegisterPage(w http.ResponseWriter,r *http.Request) {
  if !h.deps.Mail.Ready() { http.NotFound(w,r);return }
- h.render(w,"auth/register.html",pageData{Title:i18n.T("register.title","en"),Lang:"en",
+ h.render(w,"auth/register.html",pageData{Title:i18n.T("register.title",publicLanguage(r)),Lang:publicLanguage(r),
    CSRF:auth.IssueCSRF(w),ColorScheme:"light dark",RegistrationEnabled:true})
 }
 
 func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
  if !h.deps.Mail.Ready() { http.NotFound(w,r);return }
+ cookie,err:=r.Cookie(auth.CSRFCookie)
+ if err!=nil || subtle.ConstantTimeCompare([]byte(cookie.Value),[]byte(r.PostFormValue("_csrf")))!=1 {
+    http.Error(w,"Invalid CSRF token",http.StatusForbidden);return
+ }
  email:=strings.ToLower(strings.TrimSpace(r.FormValue("email")))
  password:=r.FormValue("password")
  addr,err:=mail.ParseAddress(email)
@@ -39,11 +62,12 @@ func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
  u:=&models.User{Email:email,PasswordHash:hash,DisplayName:strings.TrimSpace(r.FormValue("display_name"))}
  err=h.deps.Store.Users.CreatePending(r.Context(),u,auth.HashToken(token))
  if err==nil {
-    if err=h.deps.Mail.SendVerification(r.Context(),email,token);err!=nil {
+    if err=h.deps.Mail.SendVerification(r.Context(),email,token,publicLanguage(r));err!=nil {
+       _ = h.deps.Store.Users.DeletePermanently(r.Context(),u.ID)
        http.Error(w,"Email delivery failed; contact the administrator",http.StatusBadGateway);return
     }
  }
- http.Redirect(w,r,"/login?registration=sent",http.StatusSeeOther)
+ http.Redirect(w,r,"/login?registration=sent&lang="+url.QueryEscape(publicLanguage(r)),http.StatusSeeOther)
 }
 
 func (h *Handler) handleVerifyEmail(w http.ResponseWriter,r *http.Request) {
@@ -52,7 +76,7 @@ func (h *Handler) handleVerifyEmail(w http.ResponseWriter,r *http.Request) {
  if err:=h.deps.Store.Users.VerifyEmail(r.Context(),auth.HashToken(token));err!=nil {
    http.Error(w,"Expired or already used verification link",http.StatusBadRequest);return
  }
- http.Redirect(w,r,"/login?registration=verified",http.StatusSeeOther)
+ http.Redirect(w,r,"/login?registration=verified&lang="+url.QueryEscape(publicLanguage(r)),http.StatusSeeOther)
 }
 
 func (h *Handler) handleAdmin(w http.ResponseWriter,r *http.Request) {
