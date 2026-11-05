@@ -293,7 +293,7 @@ func (n noDirFS) Open(name string) (http.File, error) {
 
 func (h *Handler) handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.IssueCSRF(w)
-	h.render(w, "auth/login.html", pageData{Title: "Sign in", Lang: "en", CSRF: csrf, ColorScheme: "light dark", RegistrationEnabled: h.deps.Mail.Ready()})
+	h.render(w, "auth/login.html", pageData{Title: "Sign in", Lang: publicLanguage(r), CSRF: csrf, ColorScheme: "light dark", RegistrationEnabled: h.deps.Mail.Ready(), Flash: registrationFlash(r)})
 }
 
 func (h *Handler) handleLoginPost(w http.ResponseWriter, r *http.Request) {
@@ -301,7 +301,7 @@ func (h *Handler) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	loginFailed := func() {
 		csrf := auth.IssueCSRF(w)
-		h.render(w, "auth/login.html", pageData{Title: "Sign in", Lang: "en", CSRF: csrf, ColorScheme: "light dark", Error: i18n.T("login.failed", "en")})
+		h.render(w, "auth/login.html", pageData{Title: "Sign in", Lang: publicLanguage(r), CSRF: csrf, ColorScheme: "light dark", RegistrationEnabled: h.deps.Mail.Ready(), Error: i18n.T("login.failed", publicLanguage(r))})
 	}
 	if h.deps.LoginRL != nil && !h.deps.LoginRL.Allow(r, email) {
 		loginFailed()
