@@ -250,3 +250,26 @@ func TestLoginRateLimiterLockout(t *testing.T) {
 		t.Fatalf("other email should be allowed")
 	}
 }
+
+func TestDisabledUserCannotUseExistingAPIToken(t *testing.T) {
+    st, user, _ := newAuthStore(t)
+    ctx := context.Background()
+    gen, err := auth.GenerateAPIToken()
+    if err != nil {t.Fatal(err)}
+    if _,err:=st.Tokens.Create(ctx,user.ID,"before-disable",gen.Prefix,gen.Hash);err!=nil {t.Fatal(err)}
+    admin:=&models.User{Email:"other-admin@example.org",PasswordHash:"x"}
+    if err:=st.Users.Create(ctx,admin);err!=nil {t.Fatal(err)}
+    if err:=st.Users.SetRole(ctx,admin.ID,"admin");err!=nil {t.Fatal(err)}
+    if err:=st.Users.SetDisabled(ctx,user.ID,true);err!=nil {t.Fatal(err)}
+    mw:=&auth.Middleware{Store:st}
+    handler:=mw.AuthBearer(mw.RequireUser(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+        t.Error("disabled user was authenticated")
+    })))
+    req:=httptest.NewRequest(http.MethodGet,"/api/v1/tasks",nil)
+    req.Header.Set("Authorization","Bearer "+gen.Full)
+    w:=httptest.NewRecorder()
+    handler.ServeHTTP(w,req)
+    if w.Code!=http.StatusUnauthorized {
+        t.Fatalf("disabled user token returned %d instead of 401",w.Code)
+    }
+}
