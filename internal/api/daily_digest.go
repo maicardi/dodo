@@ -89,12 +89,15 @@ func (sc *Scheduler) tickDailyDigest(ctx context.Context, now time.Time) {
         if user.DailyDigestLastSentDate==today || local.Format("15:04")<user.DailyDigestTime {continue}
         start:=time.Date(local.Year(),local.Month(),local.Day(),0,0,0,0,loc)
         end:=start.AddDate(0,0,1)
-        tasks,err:=sc.store.Tasks.ListCandidatesForDigest(ctx,user.ID,end.UTC())
+        tasks,err:=sc.store.Tasks.ListCandidatesForDigest(ctx,user.ID,start.UTC(),end.UTC())
         if err!=nil {sc.logger.Warn("digest task listing failed","user_id",user.ID,"error",err);continue}
         items:=dailyDigestItems(tasks,start,end,loc)
         if len(items)==0 {continue}
         message:=renderDailyDigest(user,local,items)
-        if err:=sc.telegram.SendTest(ctx,user.ID,user.TelegramChatID,message);err!=nil{
+        sendCtx,cancel:=context.WithTimeout(ctx,20*time.Second)
+        err=sc.telegram.SendTest(sendCtx,user.ID,user.TelegramChatID,message)
+        cancel()
+        if err!=nil{
             sc.logger.Warn("telegram daily digest failed","user_id",user.ID,"error",err)
             continue
         }
