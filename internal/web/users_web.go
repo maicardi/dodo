@@ -117,9 +117,25 @@ func (h *Handler) handleAdminCreate(w http.ResponseWriter,r *http.Request) {
 func (h *Handler) handleAdminRole(w http.ResponseWriter,r *http.Request) {
  h.adminChange(w,r,func()error{return h.deps.Store.Users.SetRole(r.Context(),r.PathValue("id"),r.FormValue("role"))})
 }
+func (h *Handler) stopTelegram(userID string) {
+    if st,ok := h.deps.Telegram.(interface{ StopTelegramForUser(string) });ok {
+        st.StopTelegramForUser(userID)
+    }
+}
 func (h *Handler) handleAdminStatus(w http.ResponseWriter,r *http.Request) {
- h.adminChange(w,r,func()error{return h.deps.Store.Users.SetDisabled(r.Context(),r.PathValue("id"),r.FormValue("disabled")=="true")})
+ h.adminChange(w,r,func()error{
+   id:=r.PathValue("id")
+   disabled:=r.FormValue("disabled")=="true"
+   if err:=h.deps.Store.Users.SetDisabled(r.Context(),id,disabled);err!=nil {return err}
+   if disabled {h.stopTelegram(id)}
+   return nil
+ })
 }
 func (h *Handler) handleAdminDelete(w http.ResponseWriter,r *http.Request) {
- h.adminChange(w,r,func()error{return h.deps.Store.Users.DeletePermanently(r.Context(),r.PathValue("id"))})
+ h.adminChange(w,r,func()error{
+    id:=r.PathValue("id")
+    if err:=h.deps.Store.Users.DeletePermanently(r.Context(),id);err!=nil {return err}
+    h.stopTelegram(id)
+    return nil
+ })
 }
