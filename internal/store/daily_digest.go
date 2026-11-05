@@ -2,8 +2,6 @@ package store
 
 import (
     "context"
-    "database/sql"
-    "errors"
     "fmt"
     "regexp"
     "time"
@@ -74,5 +72,3 @@ func (s *Tasks) ListCandidatesForDigest(ctx context.Context, userID string, dayE
     return tasks,rows.Err()
 }
 
-var _ = sql.ErrNoRows
-var _ = errors.Is
