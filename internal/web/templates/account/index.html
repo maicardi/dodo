@@ -99,6 +99,24 @@
   </div>
 
   <div class="card panel">
+    <h2>{{t .Lang "digest.title"}}</h2>
+    <p class="hint">{{t .Lang "digest.help"}}</p>
+    <form method="POST" action="/account/daily-digest">
+      <input type="hidden" name="_csrf" value="{{.CSRF}}">
+      <label class="field">
+        <span>{{t .Lang "digest.enabled"}}</span>
+        <input type="checkbox" name="daily_digest_enabled" value="1" {{if .User.DailyDigestEnabled}}checked{{end}}>
+      </label>
+      <label class="field"><span>{{t .Lang "digest.time"}}</span>
+        <input type="time" name="daily_digest_time" value="{{.User.DailyDigestTime}}" required>
+      </label>
+      <p class="hint">{{t .Lang "digest.timezone"}}: {{.User.Timezone}}</p>
+      <div class="form-actions"><button class="btn btn-primary">{{t .Lang "action.save"}}</button></div>
+    </form>
+    {{if not .Telegram.Linked}}<p class="hint">{{t .Lang "digest.telegram_required"}}</p>{{end}}
+  </div>
+
+  <div class="card panel">
     <h2>Telegram</h2>
     {{if .Telegram.Configured}}
       <p><span class="badge recurring">{{t .Lang "telegram.status_configured"}}</span>
