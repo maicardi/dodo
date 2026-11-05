@@ -62,40 +62,33 @@ func scanUser(row interface {
 }
 
 func (s *Users) Create(ctx context.Context, u *models.User) error {
-	u.ID = newUUID()
-	now := time.Now().UTC()
-	u.CreatedAt = now
-	u.UpdatedAt = now
-	if u.Timezone == "" {
-		u.Timezone = "Europe/Athens"
-	}
-	if u.Locale == "" {
-		u.Locale = models.LocaleEn
-	}
-	if u.Theme == "" {
-		u.Theme = models.ThemeSystem
-	}
-	u.DateFormat = dateformat.Normalize(u.DateFormat)
-
-	var botToken, allowed, chatID, chatUserID, configuredAt, deletedAt any
-	_, err := s.db.ExecContext(ctx, `INSERT INTO users
-(id, email, password_hash, display_name, timezone, locale, theme, date_format,
- telegram_bot_token, telegram_allowed_user_ids, telegram_chat_id, telegram_chat_user_id,
- telegram_configured_at, created_at, updated_at, deleted_at)
-VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		u.ID, u.Email, u.PasswordHash, u.DisplayName, u.Timezone, u.Locale, u.Theme, u.DateFormat,
-		botToken, allowed, chatID, chatUserID, configuredAt, formatTime(u.CreatedAt), formatTime(u.UpdatedAt), deletedAt)
-	if err != nil {
-        if isUniqueViolation(err) {
-            return fmt.Errorf("%w: email already exists", models.ErrConflict)
-        }
+    u.ID = newUUID()
+    now := time.Now().UTC()
+    u.CreatedAt, u.UpdatedAt = now, now
+    if u.Timezone == "" { u.Timezone = "Europe/Athens" }
+    if u.Locale == "" { u.Locale = models.LocaleEn }
+    if u.Theme == "" { u.Theme = models.ThemeSystem }
+    u.DateFormat = dateformat.Normalize(u.DateFormat)
+    tx,err := s.db.BeginTx(ctx,nil)
+    if err != nil { return err }
+    defer func(){ _ = tx.Rollback() }()
+    _,err = tx.ExecContext(ctx,`INSERT INTO users
+        (id,email,password_hash,display_name,timezone,locale,theme,date_format,
+         created_at,updated_at,email_verified_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+         u.ID,u.Email,u.PasswordHash,u.DisplayName,u.Timezone,u.Locale,u.Theme,
+         u.DateFormat,formatTime(now),formatTime(now),formatTime(now))
+    if err != nil {
+        if isUniqueViolation(err) { return fmt.Errorf("%w: email already exists",models.ErrConflict) }
         return err
     }
-    _, err = s.db.ExecContext(ctx, `UPDATE users SET email_verified_at = created_at WHERE id=?`, u.ID)
+    promoted,err:=tx.ExecContext(ctx,`UPDATE users SET role='admin' WHERE id=?
+        AND NOT EXISTS (SELECT 1 FROM users WHERE role='admin' AND deleted_at IS NULL
+          AND disabled_at IS NULL AND email_verified_at IS NOT NULL)`,u.ID)
     if err != nil { return err }
-    _, err = s.db.ExecContext(ctx, `UPDATE users SET role='admin' WHERE id=?
-       AND NOT EXISTS (SELECT 1 FROM users WHERE role='admin' AND deleted_at IS NULL AND disabled_at IS NULL)`, u.ID)
-    return err
+    if n,_:=promoted.RowsAffected();n>0 { u.Role="admin" } else { u.Role="user" }
+    u.EmailVerifiedAt = &now
+    return tx.Commit()
 }
 
 func (s *Users) GetByID(ctx context.Context, id string) (*models.User, error) {
