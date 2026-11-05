@@ -26,16 +26,16 @@ The project will be MIT-licensed.
 - Browser notifications: opt-in desktop notifications for due tasks (Web Notifications API), enabled from the web Account page.
 - Full tasks management and viewing from AI agents with the cli. Raw json default output for agents, with --pretty for humans: aligned tables and key/value blocks rendered in the user's date format, and single-line errors. The flag never changes the default output, so the agent contract stays byte-identical.
 - Modern, clean web ui: topbar user menu, list view with time-period (today/week/month) and status (pending/completed/all) filters, a month calendar, dark/light/system theme selector, and a language switcher.
-- i18n: English and Greek UI (web, TUI, telegram messages). Per-user timezone, date format and locale. All three clients (web, TUI, CLI) present task times in the user's timezone: the web and, now, the TUI and CLI resolve the zone from an optional client-config override, then the user's profile timezone, then the host local zone. The API always serializes UTC; conversion happens at the render edge. The per-user `date_format` (a token pattern like `DD/MM/YYYY`, empty meaning the built-in layout) is resolved the same way and applied by `internal/dateformat`, which also parses dates typed back in that pattern.
+- i18n: English, Greek and Italian UI (web, TUI, telegram messages). Per-user timezone, date format and locale. All three clients (web, TUI, CLI) present task times in the user's timezone: the web and, now, the TUI and CLI resolve the zone from an optional client-config override, then the user's profile timezone, then the host local zone. The API always serializes UTC; conversion happens at the render edge. The per-user `date_format` (a token pattern like `DD/MM/YYYY`, empty meaning the built-in layout) is resolved the same way and applied by `internal/dateformat`, which also parses dates typed back in that pattern.
 - Server configuration via env vars. The cli and tui clients read `~/.config/dodo/config.json` (overridable with flags), no env vars. The client config has optional `timezone` (IANA name) and `date_format` (token pattern) values that override the profile ones; `dodo-cli init` accepts `--timezone` and `--date-format`.
 
 ## Stack
 
 - Mise setup for all dev tooling installation and tasks.
-- Go 1.27.2 for both the api and the cli commands. Three binaries: `dodo` (server + admin subcommand, ships in the container), `dodo-cli` (agent CLI), `dodo-tui` (terminal UI).
+- Go 1.27.3 for both the api and the cli commands. Three binaries: `dodo` (server + admin subcommand, ships in the container), `dodo-cli` (agent CLI), `dodo-tui` (terminal UI).
 - Use go stdlib as much as possible, reducing external dependencies. Telegram Bot API via a small hand-rolled client (no external telegram library).
 - Unit tests with extended coverage.
-- golangci-lint v2.14.0 for all go files.
+- golangci-lint v2.15.0 for all go files.
 - Sqlite for database with native go library modernc.org/sqlite.
 - Web frontend built with htmx + Alpine.js and a hand-written, self-contained stylesheet (no Tailwind or CSS framework). Node 24 is used only to vendor htmx/alpine and assemble the embedded assets.
 - Dockerfile for deployment, with alpine:3.24 based container (node:24-alpine build stage for frontend assets).

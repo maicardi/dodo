@@ -61,7 +61,7 @@ Open `http://localhost:8080/login` in a browser and sign in with those
 credentials to use the web UI: a list view (with today/this-week/
 this-month and pending/completed/all filters), a month calendar,
 per-user profile, API token management, Telegram setup, dark/light/
-system theme, and English/Greek locales.
+system theme, and English/Greek/Italian locales.
 
 ## Deploy with Docker Compose
 
@@ -207,9 +207,27 @@ Bot tokens are encrypted at rest with AES-256-GCM
 ## Browser notifications
 
 On the web Account page, click **Enable notifications** to also get a
-desktop notification when a task is due. This uses the Web Notifications
-API, so it fires while a dodo tab is open and requires a secure context
-(`localhost` or https — not plain http to a LAN/tailnet IP).
+notification when a task is due. It is shown through dodo's service worker,
+so it also works in Chrome on Android, including the installed app. It
+fires while dodo is open (a tab, or the installed app while the OS keeps
+it running; there is no push service), so use Telegram for reminders you
+must not miss. On iOS, notifications are only available in the installed
+app (iOS 16.4+), not in a Safari or Chrome tab. It requires a secure context (`localhost` or https — not
+plain http to a LAN/tailnet IP).
+
+## Install as an app
+
+The web UI is a Progressive Web App, so it can be installed and opened in
+its own window without the browser chrome:
+
+- **Android (Chrome)**: menu → **Add to Home screen** → **Install**.
+- **iOS (Chrome or Safari)**: Share → **Add to Home Screen**.
+- **Desktop (Chrome/Edge)**: the install icon in the address bar.
+
+Like notifications, this needs a secure context (https or `localhost`).
+The app always loads live data from the server. When the server can't be
+reached (the device is offline, or a reverse proxy answers 502/503/504) it
+shows a retry page instead of the browser's error.
 
 ## Backup
 

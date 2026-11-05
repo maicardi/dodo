@@ -14,7 +14,7 @@ Guidance for AI agents working on this repository.
 
 ## Tooling
 
-- [mise](https://mise.jdx.dev/) installs Go 1.27.2, golangci-lint 2.14.0, Node 24.
+- [mise](https://mise.jdx.dev/) installs Go 1.27.3, golangci-lint 2.15.0, Node 24.
 - `mise trust` once per clone.
 
 ## Commands
@@ -40,7 +40,7 @@ Also `go vet ./...` and `gofmt -l .` (must be empty).
 
 ## Conventions
 
-- Go 1.27.2, `internal/` package boundary.
+- Go 1.27.3, `internal/` package boundary.
 - Logging: `log/slog` structured. Server/admin read `DODO_LOG_LEVEL`; clients read `log_level` from their config.
 - Errors: sentinel errors in `internal/models/errors.go` (`ErrNotFound`, `ErrUnauthorized`, `ErrConflict`, `ErrValidation`). Wrap with `%w`. HTTP layer maps them to status codes.
 - `context.Context` is the first param of every store/handler method.
@@ -59,7 +59,7 @@ Also `go vet ./...` and `gofmt -l .` (must be empty).
 | `DODO_DATABASE_PATH`       | `/data/dodo.sqlite` | Used by `serve` and `admin`.                  |
 | `DODO_LISTEN`             | `:8080`          | HTTP bind address.                               |
 | `DODO_ENCRYPTION_KEY`     | (required)       | 32-byte base64 key for AES-256-GCM (telegram bot tokens). Generate with `openssl rand -base64 32`. Server refuses to start without it. |
-| `DODO_DEFAULT_LOCALE`     | `en`             | `en` or `el`.                                    |
+| `DODO_DEFAULT_LOCALE`     | `en`             | `en`, `el` or `it`.                              |
 | `DODO_DEFAULT_TIMEZONE`   | `Europe/Athens`  | IANA name.                                       |
 | `DODO_SCHEDULER_INTERVAL` | `1m`             | Reminder scan cadence (min `1m`).                |
 | `DODO_LOG_LEVEL`          | `info`           | debug/info/warn/error.                           |

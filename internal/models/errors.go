@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -84,10 +85,15 @@ type Locale string
 const (
 	LocaleEn Locale = "en"
 	LocaleEl Locale = "el"
+	LocaleIt Locale = "it"
 )
 
+// Locales lists every supported locale; each needs a matching
+// internal/i18n/locales/<code>.json (enforced by the i18n tests).
+var Locales = []Locale{LocaleEn, LocaleEl, LocaleIt}
+
 func (l Locale) Valid() bool {
-	return l == LocaleEn || l == LocaleEl
+	return slices.Contains(Locales, l)
 }
 
 func ParsePriority(s string) (Priority, error) {

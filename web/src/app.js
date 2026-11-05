@@ -7,11 +7,30 @@
   var root = document.documentElement;
 
   // ---- theme ----------------------------------------------------------
+  // Matches the topbar background (--bg-elev) so the installed app's status
+  // bar blends in; the dark manifest gives a dark splash screen.
+  var THEME_COLORS = { light: "#ffffff", dark: "#16191d" };
+
+  function applyAppColors(theme) {
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+      var scheme = (m.getAttribute("media") || "").indexOf("dark") >= 0 ? "dark" : "light";
+      m.setAttribute("content", THEME_COLORS[theme] || THEME_COLORS[scheme]);
+    });
+    var manifest = document.querySelector('link[rel="manifest"]');
+    if (manifest) {
+      var dark =
+        theme === "dark" ||
+        (theme !== "light" && !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      manifest.setAttribute("href", "/manifest.webmanifest" + (dark ? "?theme=dark" : ""));
+    }
+  }
+
   function applyTheme(theme) {
     root.classList.remove("dark", "light");
     if (theme === "dark") root.classList.add("dark");
     else if (theme === "light") root.classList.add("light");
     // "system" => no class; CSS prefers-color-scheme decides.
+    applyAppColors(theme);
   }
 
   function storedTheme() {
@@ -54,9 +73,17 @@
 
   var pref = storedTheme();
   if (pref) applyTheme(pref);
+  applyAppColors(currentTheme());
   markActiveTheme(currentTheme());
 
   window.dodoSetTheme = setTheme;
+
+  // ---- service worker -------------------------------------------------
+  // Only once signed in: the login page always renders in English and would
+  // re-register the worker with the wrong locale on every logout.
+  if ("serviceWorker" in navigator && document.querySelector(".usermenu")) {
+    navigator.serviceWorker.register("/sw.js?lang=" + encodeURIComponent(root.lang || "en")).catch(function () {});
+  }
 
   document.addEventListener("click", function (e) {
     var el = e.target.closest ? e.target.closest("[data-set-theme]") : null;
@@ -95,15 +122,48 @@
     return "Notification" in window;
   }
 
-  function notify(title, body, tag) {
+  // Shown through the service worker when there is one: Android Chrome only
+  // allows that (new Notification throws there), and sw.js focuses the app
+  // on click. The constructor stays as the fallback for desktop browsers.
+  //
+  // One notification per task, re-alerting on each reminder (renotify).
+  // Every open tab receives the same task.due event; notified_at identifies
+  // the reminder so only the first tab to see it shows it.
+  function notify(task) {
     if (!notifySupported() || Notification.permission !== "granted") return;
-    try {
-      var n = new Notification(title, { body: body, tag: tag });
-      n.onclick = function () {
-        window.focus();
-        n.close();
-      };
-    } catch (e) {}
+    var title = task.title;
+    var at = task.notified_at || "";
+    var opts = {
+      body: document.body.getAttribute("data-notify-due") || "Due now",
+      tag: "task-" + (task.id || ""),
+      renotify: true,
+      icon: "/icons/icon-192.png",
+      // Android draws this in the status bar from its alpha channel only.
+      badge: "/icons/badge.png",
+      data: { at: at },
+    };
+    var direct = function () {
+      try {
+        var n = new Notification(title, opts);
+        n.onclick = function () {
+          window.focus();
+          n.close();
+        };
+      } catch (e) {}
+    };
+    if (!("serviceWorker" in navigator)) return direct();
+    navigator.serviceWorker
+      .getRegistration()
+      .then(function (reg) {
+        if (!reg || !reg.active) return direct();
+        return reg.getNotifications({ tag: opts.tag }).then(function (shown) {
+          for (var i = 0; i < shown.length; i++) {
+            if (at && shown[i].data && shown[i].data.at === at) return;
+          }
+          return reg.showNotification(title, opts);
+        });
+      })
+      .catch(direct);
   }
 
   function updateNotifyUI() {
@@ -375,21 +435,64 @@
   window.addEventListener("scroll", dpPosition, true);
 
   // ---- live list refresh (debounced) ----------------------------------
+  //
+  // The refresh asks for as many rows as are on screen (?rows=) so pages
+  // added with "load more" survive it. A refresh requested while one is in
+  // flight runs again afterwards: htmx would queue it against the element
+  // the first one replaces, and the second swap would be lost.
   var refreshTimer = null;
+  var refreshing = false;
+  var refreshAgain = false;
+
   function refreshList() {
-    var list = document.getElementById("task-list");
-    if (!list || !window.htmx) return;
     if (refreshTimer) clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(function () {
-      window.htmx.ajax("GET", window.location.pathname + window.location.search, {
-        target: "#task-list",
-        select: "#task-list",
-        swap: "outerHTML",
-      });
-    }, 250);
+    refreshTimer = setTimeout(runRefresh, 250);
   }
 
+  function runRefresh() {
+    refreshTimer = null;
+    var el = document.getElementById("task-list") || document.getElementById("calendar");
+    if (!el || !window.htmx) return;
+    if (refreshing) {
+      refreshAgain = true;
+      return;
+    }
+    refreshing = true;
+    var sel = "#" + el.id;
+    var url = new URL(window.location.href);
+    var rows = el.querySelectorAll(".task-row").length;
+    if (rows) url.searchParams.set("rows", String(rows));
+    var done = function () {
+      refreshing = false;
+      if (refreshAgain) {
+        refreshAgain = false;
+        runRefresh();
+      }
+    };
+    Promise.resolve(
+      window.htmx.ajax("GET", url.pathname + url.search, { target: sel, select: sel, swap: "outerHTML" }),
+    ).then(done, done);
+  }
+
+  // An expired session redirects htmx requests to the login page; follow it
+  // instead of swapping the login form's missing fragment into the page.
+  document.addEventListener("htmx:beforeSwap", function (e) {
+    var xhr = e.detail && e.detail.xhr;
+    if (!xhr || !xhr.responseURL) return;
+    if (new URL(xhr.responseURL).pathname === "/login") {
+      e.detail.shouldSwap = false;
+      window.location.assign("/login");
+    }
+  });
+
   // ---- websocket ------------------------------------------------------
+  //
+  // The server sends a "ping" message every 30s. A socket that has heard
+  // nothing for WS_STALE_MS is treated as dead even if it still reports
+  // OPEN, which is what a half-open connection looks like after sleep or a
+  // network change.
+  var WS_STALE_MS = 75000;
+
   function wsDot(state) {
     var d = document.getElementById("ws-dot");
     if (!d) return;
@@ -398,7 +501,13 @@
   }
 
   var backoff = 1000;
+  var sock = null;
+  var reconnectTimer = null;
+  var lastSeen = 0;
+  var wsOpenedBefore = false;
+
   function connectWS() {
+    reconnectTimer = null;
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     var ws;
     try {
@@ -407,11 +516,17 @@
       scheduleReconnect();
       return;
     }
+    sock = ws;
     ws.onopen = function () {
       backoff = 1000;
+      lastSeen = Date.now();
       wsDot("on");
+      // Events published while we were disconnected are gone; catch up.
+      if (wsOpenedBefore) refreshList();
+      wsOpenedBefore = true;
     };
     ws.onmessage = function (ev) {
+      lastSeen = Date.now();
       var evt;
       try {
         evt = JSON.parse(ev.data);
@@ -430,7 +545,7 @@
           refreshList();
           if (evt.payload && evt.payload.title) {
             toast("⏰ " + evt.payload.title);
-            notify(evt.payload.title, "Due now", "task-" + (evt.payload.id || ""));
+            notify(evt.payload);
           }
           break;
         default:
@@ -438,6 +553,8 @@
       }
     };
     ws.onclose = function () {
+      // A socket replaced by reconnectNow must not schedule a second one.
+      if (sock !== ws) return;
       wsDot("off");
       scheduleReconnect();
     };
@@ -449,13 +566,61 @@
   }
 
   function scheduleReconnect() {
-    setTimeout(connectWS, backoff);
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(connectWS, backoff);
     backoff = Math.min(backoff * 2, 30000);
+  }
+
+  function wsHealthy() {
+    if (!sock) return false;
+    if (sock.readyState === WebSocket.CONNECTING) return true;
+    return sock.readyState === WebSocket.OPEN && Date.now() - lastSeen <= WS_STALE_MS;
+  }
+
+  function reconnectNow() {
+    if (wsHealthy()) return;
+    if (sock && sock.readyState === WebSocket.OPEN) {
+      try {
+        sock.close();
+      } catch (e) {}
+    }
+    clearTimeout(reconnectTimer);
+    backoff = 1000;
+    connectWS();
   }
 
   // Connect the live-updates websocket on authenticated pages (the user menu
   // only renders when logged in).
-  if (document.querySelector(".usermenu")) {
+  var live = !!document.querySelector(".usermenu");
+  if (live) {
     connectWS();
+    setInterval(function () {
+      if (sock && sock.readyState === WebSocket.OPEN && !wsHealthy()) reconnectNow();
+    }, 15000);
   }
+
+  // ---- refresh on resume ----------------------------------------------
+  //
+  // While the socket stays healthy the list is already current, so a quick
+  // tab switch must not reload it (and lose scroll position). Refresh when
+  // events may have been missed (the socket died) or after a long absence,
+  // when relative labels and overdue states may have moved on.
+  var RESUME_REFRESH_MS = 60000;
+  var hiddenAt = document.visibilityState === "hidden" ? Date.now() : null;
+
+  function onResume(force) {
+    var away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+    hiddenAt = null;
+    var missed = live && !wsHealthy();
+    if (force || missed || away >= RESUME_REFRESH_MS) refreshList();
+    if (missed) reconnectNow();
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") hiddenAt = Date.now();
+    else onResume(false);
+  });
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) onResume(true);
+  });
 })();
