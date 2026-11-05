@@ -127,7 +127,11 @@ func (h *Handler) handleAdminStatus(w http.ResponseWriter,r *http.Request) {
    id:=r.PathValue("id")
    disabled:=r.FormValue("disabled")=="true"
    if err:=h.deps.Store.Users.SetDisabled(r.Context(),id,disabled);err!=nil {return err}
-   if disabled {h.stopTelegram(id)}
+   if disabled {
+       h.stopTelegram(id)
+       _ = h.deps.Store.Sessions.DeleteByUser(r.Context(),id)
+       if h.deps.Hub!=nil {h.deps.Hub.DisconnectUser(id)}
+   }
    return nil
  })
 }
@@ -136,6 +140,7 @@ func (h *Handler) handleAdminDelete(w http.ResponseWriter,r *http.Request) {
     id:=r.PathValue("id")
     if err:=h.deps.Store.Users.DeletePermanently(r.Context(),id);err!=nil {return err}
     h.stopTelegram(id)
+    if h.deps.Hub!=nil {h.deps.Hub.DisconnectUser(id)}
     return nil
  })
 }
