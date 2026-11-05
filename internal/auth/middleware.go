@@ -40,7 +40,7 @@ func (m *Middleware) resolveSession(ctx context.Context, cookieValue string) *mo
 		return nil
 	}
 	user, err := m.Store.Users.GetByID(ctx, ses.UserID)
-	if err != nil || user.Deleted() {
+	if err != nil || !user.Active() {
 		_ = m.Store.Sessions.Expire(ctx, ses.ID)
 		return nil
 	}
