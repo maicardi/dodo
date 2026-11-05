@@ -34,8 +34,10 @@ func registrationFlash(r *http.Request) string {
 
 func (h *Handler) handleRegisterPage(w http.ResponseWriter,r *http.Request) {
  if !h.deps.Mail.Ready() { http.NotFound(w,r);return }
+ errMessage:=""
+ if r.URL.Query().Get("invalid")=="1" { errMessage=i18n.T("register.invalid",publicLanguage(r)) }
  h.render(w,"auth/register.html",pageData{Title:i18n.T("register.title",publicLanguage(r)),Lang:publicLanguage(r),
-   CSRF:auth.IssueCSRF(w),ColorScheme:"light dark",RegistrationEnabled:true})
+   CSRF:auth.IssueCSRF(w),ColorScheme:"light dark",RegistrationEnabled:true,Error:errMessage})
 }
 
 func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
@@ -48,12 +50,12 @@ func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
  password:=r.FormValue("password")
  addr,err:=mail.ParseAddress(email)
  if err!=nil || addr.Address!=email || len(password)<8 || len(email)>254 {
-    http.Redirect(w,r,"/register?invalid=1",http.StatusSeeOther);return
+    http.Redirect(w,r,"/register?invalid=1&lang="+url.QueryEscape(publicLanguage(r)),http.StatusSeeOther);return
  }
- if !h.deps.LoginRL.Allow(r,email) {
-    http.Error(w,"Too many requests",http.StatusTooManyRequests);return
+ if h.deps.LoginRL!=nil && (!h.deps.LoginRL.Allow(r,email) || !h.deps.LoginRL.Allow(r,"registration")) {
+    http.Error(w,i18n.T("register.too_many",publicLanguage(r)),http.StatusTooManyRequests);return
  }
- h.deps.LoginRL.RecordFailure(r,email)
+ if h.deps.LoginRL!=nil { h.deps.LoginRL.RecordFailure(r,email);h.deps.LoginRL.RecordFailure(r,"registration") }
  hash,err:=auth.HashPassword(password)
  if err!=nil { http.Error(w,"Service error",http.StatusInternalServerError);return }
  raw:=make([]byte,32)
@@ -64,7 +66,7 @@ func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
  if err==nil {
     if err=h.deps.Mail.SendVerification(r.Context(),email,token,publicLanguage(r));err!=nil {
        _ = h.deps.Store.Users.DeletePermanently(r.Context(),u.ID)
-       http.Error(w,"Email delivery failed; contact the administrator",http.StatusBadGateway);return
+       http.Error(w,i18n.T("register.email_failed",publicLanguage(r)),http.StatusBadGateway);return
     }
  }
  http.Redirect(w,r,"/login?registration=sent&lang="+url.QueryEscape(publicLanguage(r)),http.StatusSeeOther)
@@ -72,9 +74,9 @@ func (h *Handler) handleRegisterPost(w http.ResponseWriter,r *http.Request) {
 
 func (h *Handler) handleVerifyEmail(w http.ResponseWriter,r *http.Request) {
  token:=r.URL.Query().Get("token")
- if len(token)<30 || len(token)>256 { http.Error(w,"Invalid verification link",http.StatusBadRequest);return }
+ if len(token)<30 || len(token)>256 { http.Error(w,i18n.T("register.verify_invalid",publicLanguage(r)),http.StatusBadRequest);return }
  if err:=h.deps.Store.Users.VerifyEmail(r.Context(),auth.HashToken(token));err!=nil {
-   http.Error(w,"Expired or already used verification link",http.StatusBadRequest);return
+   http.Error(w,i18n.T("register.verify_invalid",publicLanguage(r)),http.StatusBadRequest);return
  }
  http.Redirect(w,r,"/login?registration=verified&lang="+url.QueryEscape(publicLanguage(r)),http.StatusSeeOther)
 }
