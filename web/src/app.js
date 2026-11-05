@@ -608,8 +608,9 @@
     // The click toggles the form; do not overwrite an already-open editor.
     if (form.dataset.defaultsLoading === "true") return;
     form.dataset.defaultsLoading = "true";
-    fetch("/ui/tasks/defaults", { credentials: "same-origin", cache: "no-store" })
-      .then(function (response) {
+    Promise.resolve().then(function () {
+      return fetch("/ui/tasks/defaults", { credentials: "same-origin", cache: "no-store" });
+    }).then(function (response) {
         if (!response.ok) throw new Error("defaults unavailable");
         return response.json();
       })
